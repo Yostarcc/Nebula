@@ -6,6 +6,7 @@ import emu.nebula.net.GameSession;
 import emu.nebula.net.HandlerId;
 import emu.nebula.net.NetHandler;
 import emu.nebula.net.NetMsgId;
+import emu.nebula.net.PacketHelper;
 import emu.nebula.proto.PlayerLogin.LoginReq;
 import emu.nebula.proto.PlayerLogin.LoginResp;
 import emu.nebula.proto.Public.Error;
@@ -54,15 +55,17 @@ public class HandlerPlayerLoginReq extends NetHandler {
         // Set platform
         session.setPlatform(req.getPlatformValue());
 
-        // Regenerate session token because we are switching encrpytion method
+        // Regenerate session token because we are switching encryption method
         Nebula.getGameContext().generateSessionToken(session);
 
         // Create rsp
         var rsp = LoginResp.newInstance()
                 .setToken(session.getToken());
 
-        // Encode and send to client
-        return session.encodeMsg(NetMsgId.player_login_succeed_ack, rsp);
+        // Do not use GameSession.encodeMsg here: it would attach NextPackage to login ack.
+        // The client handles activity/quest notifications before requesting player_data_req.
+        // And because playerData caches are still missing and notification refresh code will hit nil data.
+        return PacketHelper.encodeMsg(NetMsgId.player_login_succeed_ack, rsp);
     }
 
 }
