@@ -2,10 +2,8 @@ package emu.nebula.data.resources;
 
 import emu.nebula.data.BaseDef;
 import emu.nebula.data.ResourceType;
+import emu.nebula.util.Utils;
 import lombok.Getter;
-
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Getter
@@ -46,21 +44,10 @@ public class BattlePassDef extends BaseDef {
     
     @Override
     public void onLoad() {
-        // Parse start time to timestamp
-        try {
-            var formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-            var zonedDateTime = ZonedDateTime.parse(StartTime, formatter);
-            this.startTimeTimestamp = zonedDateTime.toInstant().toEpochMilli() / 1000;
-        } catch (Exception e) {
-            this.startTimeTimestamp = 0;
-        }
-        
-        // Parse end time to timestamp
-        try {
-            var formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-            var zonedDateTime = ZonedDateTime.parse(EndTime, formatter);
-            this.endTimeTimestamp = zonedDateTime.toInstant().toEpochMilli() / 1000;
-        } catch (Exception e) {
+        this.startTimeTimestamp = Utils.dateToSeconds(this.StartTime);
+        this.endTimeTimestamp = Utils.dateToSeconds(this.EndTime);
+
+        if (this.endTimeTimestamp <= 0) {
             this.endTimeTimestamp = Long.MAX_VALUE;
         }
     }

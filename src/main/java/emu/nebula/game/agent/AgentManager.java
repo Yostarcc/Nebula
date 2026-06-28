@@ -25,7 +25,7 @@ public class AgentManager extends PlayerManager implements GameDatabaseObject {
     
     private Map<Integer, Agent> agents;
     
-    @Deprecated // Morhpia only
+    @Deprecated // Morphia only
     public AgentManager() {
         
     }

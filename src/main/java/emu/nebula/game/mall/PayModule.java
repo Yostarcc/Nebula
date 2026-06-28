@@ -1,6 +1,5 @@
 package emu.nebula.game.mall;
 
-import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import emu.nebula.Nebula;
@@ -8,6 +7,7 @@ import emu.nebula.data.resources.MallPackageDef;
 import emu.nebula.data.resources.MallGemDef;
 import emu.nebula.data.resources.MallMonthlyCardDef;
 import emu.nebula.data.resources.BattlePassDef;
+import emu.nebula.data.resources.DropDef;
 import emu.nebula.data.resources.DropPkgDef;
 import emu.nebula.game.GameContext;
 import emu.nebula.game.GameContextModule;
@@ -22,7 +22,6 @@ import emu.nebula.proto.Notify.OrderStateChange;
 import emu.nebula.proto.Public.Item;
 import emu.nebula.proto.Public.ChangeInfo;
 import emu.nebula.proto.Public.Res;
-import emu.nebula.util.JsonUtils;
 
 /**
  * Mock payment, isolate mock order data
@@ -39,7 +38,6 @@ public class PayModule extends GameContextModule {
     }
 
     private final ConcurrentHashMap<Integer, CollectSettlement> pendingCollects = new ConcurrentHashMap<>();
-    private volatile Map<Integer, int[]> battlePassDropPackages;
 
     public void clearPendingCollect(int uid) {
         pendingCollects.remove(uid);
@@ -101,10 +99,7 @@ public class PayModule extends GameContextModule {
             }
 
             collectPlayer.activateMonthlyCard(data.getIdString(), durationDays);
-            var dailyRewardChange = collectPlayer.createMonthlyCardRewardChange(data.getIdString());
-            if (dailyRewardChange != null) {
-                collectChange.add(dailyRewardChange);
-            }
+            collectPlayer.grantMonthlyCardReward(data.getIdString(), false);
 
             return MallOrderCollectResult.of(collectChange.toProto());
         });
@@ -200,8 +195,8 @@ public class PayModule extends GameContextModule {
             return;
         }
 
-        var packageIds = this.getBattlePassDropPackages().get(collectItemId);
-        if (packageIds == null || packageIds.length == 0) {
+        var packageIds = DropDef.getPackageIds(collectItemId);
+        if (packageIds == null || packageIds.isEmpty()) {
             rewards.add(collectItemId, collectItemQty);
             return;
         }
@@ -214,73 +209,6 @@ public class PayModule extends GameContextModule {
                 }
             }
         }
-    }
-
-    /**
-     * Loads battle-pass drop-package mapping from Drop.json on first use and caches it.
-     * Mapping rule: DropId -> [PkgId...].
-     */
-    private Map<Integer, int[]> getBattlePassDropPackages() {
-        var cache = this.battlePassDropPackages;
-        if (cache != null) {
-            return cache;
-        }
-
-        synchronized (this) {
-            cache = this.battlePassDropPackages;
-            if (cache != null) {
-                return cache;
-            }
-
-            cache = this.loadBattlePassDropPackages();
-            this.battlePassDropPackages = cache;
-            return cache;
-        }
-    }
-
-    private Map<Integer, int[]> loadBattlePassDropPackages() {
-        final String dropPath = Nebula.getConfig().resourceDir + "/bin/Drop.json";
-        var result = new LinkedHashMap<Integer, int[]>();
-
-        try {
-            var rows = JsonUtils.loadToMap(dropPath, String.class, DropRow.class);
-            if (rows == null || rows.isEmpty()) {
-                return Collections.emptyMap();
-            }
-
-            var aggregate = new LinkedHashMap<Integer, List<Integer>>();
-            for (var row : rows.values()) {
-                if (row == null || row.DropId <= 0 || row.PkgId <= 0) {
-                    continue;
-                }
-                aggregate.computeIfAbsent(row.DropId, ignored -> new ArrayList<>()).add(row.PkgId);
-            }
-
-            for (var entry : aggregate.entrySet()) {
-                var values = entry.getValue();
-                if (values == null || values.isEmpty()) {
-                    continue;
-                }
-                int[] packageIds = new int[values.size()];
-                for (int i = 0; i < values.size(); i++) {
-                    packageIds[i] = values.get(i);
-                }
-                result.put(entry.getKey(), packageIds);
-            }
-        } catch (Exception exception) {
-            Nebula.getLogger().error("Failed to load battle-pass drop mapping from {}", dropPath, exception);
-            return Collections.emptyMap();
-        }
-
-        return result;
-    }
-
-    /**
-     * Minimal Drop.json row shape needed for battle-pass mapping.
-     */
-    private static final class DropRow {
-        private int DropId;
-        private int PkgId;
     }
 
     /**

@@ -37,8 +37,8 @@ public class HandlerBattlePassOrderCollectReq extends NetHandler {
             collectResp.setItems(collectResult.getDisplayChange());
         }
 
-        if (collectResult.hasStateChange()) {
-            payModule.pushInventoryNotifies(session, collectResult.getStateChange());
+        if (collectResult.hasStateNotifyChange()) {
+            payModule.pushInventoryNotifies(session, collectResult.getStateNotifyChange());
         }
 
         // Build response

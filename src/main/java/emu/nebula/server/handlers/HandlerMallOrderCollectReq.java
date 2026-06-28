@@ -20,8 +20,8 @@ public class HandlerMallOrderCollectReq extends NetHandler {
             rsp.setItems(collectResult.getDisplayChange());
         }
 
-        if (collectResult != null && collectResult.hasStateChange()) {
-            payModule.pushInventoryNotifies(session, collectResult.getStateChange());
+        if (collectResult != null && collectResult.hasStateNotifyChange()) {
+            payModule.pushInventoryNotifies(session, collectResult.getStateNotifyChange());
         }
 
         return session.encodeMsg(NetMsgId.mall_order_collect_succeed_ack, rsp);

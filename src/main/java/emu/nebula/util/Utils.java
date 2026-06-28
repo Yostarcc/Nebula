@@ -439,4 +439,15 @@ public class Utils {
         return ZoneId.systemDefault();
     }
 
+    /**
+     * Returns how many server reset days have passed since createTime. Used for daily unlock activities.
+     */
+    public static long getRelativeOpenDaysSince(long createTimeSeconds, long nowSeconds) {
+        if (createTimeSeconds <= 0 || nowSeconds <= createTimeSeconds) {
+            return 0;
+        }
+
+        return Math.max(0L, getResetEpochDay(nowSeconds) - getResetEpochDay(createTimeSeconds));
+    }
+
 }

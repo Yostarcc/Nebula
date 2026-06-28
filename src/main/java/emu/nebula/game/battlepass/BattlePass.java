@@ -64,7 +64,7 @@ public class BattlePass implements GameDatabaseObject {
         this.save();
     }
 
-    private static int getActiveBattlePassId() {
+    public static int getActiveBattlePassId() {
         long currentTimeSec = Nebula.getCurrentServerTime();
 
         for (BattlePassDef data : GameData.getBattlePassDataTable()) {
@@ -249,6 +249,10 @@ public class BattlePass implements GameDatabaseObject {
     }
     
     public BattlePass receiveQuestReward(int questId) {
+        if (!this.getPlayer().isBattlePassUnlocked()) {
+            return null;
+        }
+
         // Get received quests
         var claimList = new ArrayList<GameQuest>();
         
@@ -256,7 +260,7 @@ public class BattlePass implements GameDatabaseObject {
             // Claim specific quest
             var quest = this.getQuests().get(questId);
             
-            if (quest != null && !quest.isClaimed()) {
+            if (quest != null && quest.canClaim()) {
                 claimList.add(quest);
             }
         } else {
@@ -316,6 +320,18 @@ public class BattlePass implements GameDatabaseObject {
     }
     
     public PlayerChangeInfo receiveReward(boolean premium, int levelId) {
+        if (!this.getPlayer().isBattlePassUnlocked()
+                || levelId <= 0
+                || levelId > this.getLevel()
+                || (premium && !this.isPremium())) {
+            return null;
+        }
+
+        var data = this.getRewardData(levelId);
+        if (data == null) {
+            return null;
+        }
+
         // Get bitset
         Bitset rewards;
         
@@ -336,12 +352,6 @@ public class BattlePass implements GameDatabaseObject {
         // Save to database
         this.save();
         
-        // Get reward data
-        var data = this.getRewardData(levelId);
-        if (data == null) {
-            return new PlayerChangeInfo();
-        }
-        
         // Add items
         if (premium) {
             var premiumRewards = data.getPremiumRewards().clone();
@@ -357,6 +367,10 @@ public class BattlePass implements GameDatabaseObject {
     }
     
     public PlayerChangeInfo receiveReward() {
+        if (!this.getPlayer().isBattlePassUnlocked()) {
+            return null;
+        }
+
         // Init rewards
         var rewards = new ItemParamMap();
         
