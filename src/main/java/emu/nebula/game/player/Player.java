@@ -570,9 +570,9 @@ public class Player implements GameDatabaseObject {
     public int getEnergy() {
         // Cache time
         long time = Nebula.getCurrentServerTime();
-        
-        // Calculate time diff
-        double diff = time - this.energyLastUpdate;
+
+        // Ensure non-negative time diff to avoid uint32 overflow and client exceptions from modified server time
+        double diff = Math.max(time - this.energyLastUpdate, 0);
         long bonusEnergy = (int) Math.floor(diff / GameConstants.ENERGY_REGEN_TIME);
         
         if (this.energy < GameConstants.MAX_ENERGY) {
