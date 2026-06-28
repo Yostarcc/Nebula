@@ -43,6 +43,7 @@ public class PlayerProgress extends PlayerManager implements GameDatabaseObject 
     private Int2IntMap skillInstanceLog;
     private Int2IntMap charGemLog;
     private Int2IntMap weekBossLog;
+    private Int2IntMap weekBossTimeLog;
     
     // Infinite Arena
     private Int2IntMap infinityTowerLog;
@@ -77,6 +78,7 @@ public class PlayerProgress extends PlayerManager implements GameDatabaseObject 
         this.skillInstanceLog = new Int2IntOpenHashMap();
         this.charGemLog = new Int2IntOpenHashMap();
         this.weekBossLog = new Int2IntOpenHashMap();
+        this.weekBossTimeLog = new Int2IntOpenHashMap();
         
         // Infinity Tower
         this.infinityTowerLog = new Int2IntOpenHashMap();
@@ -190,6 +192,30 @@ public class PlayerProgress extends PlayerManager implements GameDatabaseObject 
         log.put(id, newStar);
         Nebula.getGameDatabase().update(this, this.getUid(), logName + "." + id, newStar);
     }
+
+    public int getWeekBossBestTime(int id) {
+        if (this.weekBossTimeLog == null) {
+            return 0;
+        }
+
+        return this.weekBossTimeLog.get(id);
+    }
+
+    public int saveWeekBossBestTime(int id, int clearTime) {
+        if (clearTime <= 0) {
+            return this.getWeekBossBestTime(id);
+        }
+
+        int oldBest = this.getWeekBossBestTime(id);
+        int newBest = oldBest <= 0 ? clearTime : Math.min(oldBest, clearTime);
+
+        if (oldBest != newBest) {
+            this.weekBossTimeLog.put(id, newBest);
+            Nebula.getGameDatabase().update(this, this.getUid(), "weekBossTimeLog." + id, newBest);
+        }
+
+        return newBest;
+    }
     
     // Proto
     
@@ -258,9 +284,15 @@ public class PlayerProgress extends PlayerManager implements GameDatabaseObject 
         
         // Weekly boss
         for (var data : GameData.getWeekBossLevelDataTable()) {
+            int bestTime = this.getWeekBossBestTime(data.getId());
+            if (!this.getWeekBossLog().containsKey(data.getId()) || bestTime <= 0) {
+                continue;
+            }
+
             var p = WeekBossLevel.newInstance()
                     .setId(data.getId())
-                    .setFirst(this.getWeekBossLog().get(data.getId()) == 1);
+                    .setTime(bestTime)
+                    .setFirst(true);
             
             proto.addWeekBossLevels(p);
         }
@@ -313,6 +345,12 @@ public class PlayerProgress extends PlayerManager implements GameDatabaseObject 
         // Fix missing infinity tower log
         if (this.infinityTowerLog == null) {
             this.infinityTowerLog = new Int2IntOpenHashMap();
+            shouldSave = true;
+        }
+
+        // Fix missing week boss best-time log
+        if (this.weekBossTimeLog == null) {
+            this.weekBossTimeLog = new Int2IntOpenHashMap();
             shouldSave = true;
         }
         

@@ -8,6 +8,7 @@ import emu.nebula.net.HandlerId;
 import emu.nebula.data.GameData;
 import emu.nebula.game.instance.InstanceSettleData;
 import emu.nebula.net.GameSession;
+import emu.nebula.proto.Public.WeekBossLevel;
 
 @HandlerId(NetMsgId.week_boss_settle_req)
 public class HandlerWeekBossSettleReq extends NetHandler {
@@ -25,6 +26,9 @@ public class HandlerWeekBossSettleReq extends NetHandler {
         
         // Parse request
         var req = WeekBossSettleReq.parseFrom(message);
+        if (req.getResult() && req.getTime() <= 0) {
+            return session.encodeMsg(NetMsgId.week_boss_settle_failed_ack);
+        }
         
         // Settle instance
         var changes = player.getInstanceManager().settleWeekly(
@@ -33,7 +37,18 @@ public class HandlerWeekBossSettleReq extends NetHandler {
         );
         
         var settleData = (InstanceSettleData) changes.getExtraData();
-        
+
+        if (req.getResult()) {
+            int bestTime = player.getProgress().saveWeekBossBestTime(data.getId(), req.getTime());
+
+            var weekBossLevel = WeekBossLevel.newInstance()
+                    .setId(data.getId())
+                    .setTime(bestTime)
+                    .setFirst(player.getProgress().getWeekBossLog().containsKey(data.getId()));
+
+            changes.add(weekBossLevel);
+        }
+
         // Handle client events for achievements
         session.getPlayer().getAchievementManager().handleClientEvents(req.getEvents());
         
